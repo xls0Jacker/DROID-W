@@ -21,11 +21,20 @@ def setup_seed(seed):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', type=str, help='Path to config file.')
+    parser.add_argument('--run_name', type=str, default=None,
+                        help='Custom name for this run (default: auto-generate timestamp).')
     args = parser.parse_args()
 
     torch.multiprocessing.set_start_method('spawn')
 
     cfg = config.load_config(args.config)
+
+    if args.run_name:
+        run_tag = args.run_name
+    else:
+        run_tag = strftime("%Y%m%d_%H%M%S", gmtime())
+    cfg['scene'] = f"{cfg['scene']}/{run_tag}"
+
     setup_seed(cfg['setup_seed'])
     if cfg['fast_mode']:
         # Force the final refine iterations to be 3000 if in fast mode
