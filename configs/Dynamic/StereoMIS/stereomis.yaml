@@ -1,0 +1,29 @@
+inherit_from: ./configs/droid_w.yaml
+
+dataset: 'stereomis'
+
+tracking:
+  buffer: 1248
+  force_keyframe_every_n_frames: 9
+
+mapping:
+  Training:
+    alpha: 0.8
+
+data:
+  root_folder: ./datasets/StereoMIS
+  output: ./Outputs/StereoMIS
+
+cam:
+  png_depth_scale: 1000.0
+  H: 1024
+  W: 1280
+  fx: 1039.6275634765625
+  fy: 1039.4129638671875
+  cx: 596.5435180664062
+  cy: 502.235595703125
+  distortion: [-0.003816766, 0.014934962, -0.0, 0.0, 0.012531906]
+  H_edge: 8
+  W_edge: 8
+  H_out: 384
+  W_out: 512

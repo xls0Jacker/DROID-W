@@ -1,0 +1,5 @@
+inherit_from: ./configs/Dynamic/endonerf/endonerf.yaml
+scene: pulling_soft_tissues
+
+data:
+  input_folder: ROOT_FOLDER_PLACEHOLDER/pulling_soft_tissues

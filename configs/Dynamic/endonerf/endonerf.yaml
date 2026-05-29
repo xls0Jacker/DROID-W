@@ -1,0 +1,27 @@
+inherit_from: ./configs/droid_w.yaml
+
+dataset: 'tumrgbd'
+
+tracking:
+  buffer: 350
+
+mapping:
+  Training:
+    alpha: 0.8
+
+data:
+  root_folder: ./datasets/endonerf
+  output: ./Outputs/endonerf
+
+cam:
+  png_depth_scale: 1000.0 # depth stored in mm as uint16
+  H: 512
+  W: 640
+  fx: 569.46820041
+  fy: 569.46820041
+  cx: 320.0
+  cy: 256.0
+  H_edge: 8
+  W_edge: 8
+  H_out: 384
+  W_out: 512
