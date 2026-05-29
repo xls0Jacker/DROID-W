@@ -321,8 +321,11 @@ __global__ void projective_transform_kernel(
     float wv = (Xj[2] < MIN_DEPTH) ? 0.0 : .001 * weight[block_id][1][i][j];
 
     if (enable_udba) {
-      float scale_uncer = fmaxf(45.0 * uncertainties[ix][i][j] - 35.0, 0.1f);
-      float w_uncer = fmaxf(fminf(1.0 / scale_uncer, 1.0f), 0.0f);
+      // EXP/S1: Sigmoid mapping — w = 1/(1+exp(15*(u-0.5))) + 0.1
+      // Original cliff: scale_uncer = max(45*u-35, 0.1); w = clamp(1/scale, 0, 1)
+      float sigmoid_arg = 15.0f * (uncertainties[ix][i][j] - 0.5f);
+      float w_uncer = 1.0f / (1.0f + expf(sigmoid_arg)) + 0.1f;
+      w_uncer = fminf(fmaxf(w_uncer, 0.0f), 1.0f);
       wu = wu * w_uncer;
       wv = wv * w_uncer;
       if (enable_bidirectional_uncer) {
@@ -350,8 +353,10 @@ __global__ void projective_transform_kernel(
           float u_j10 = uncertainties[jx][y1][x0];
           float u_j11 = uncertainties[jx][y1][x1];
           float uncer_target = w00 * u_j00 + w01 * u_j01 + w10 * u_j10 + w11 * u_j11;
-          float scale_uncer_target = fmaxf(45.0 * uncer_target - 35.0, 0.1f);
-          float w_uncer_target = fmaxf(fminf(1.0 / scale_uncer_target, 1.0f), 0.0f);
+          // EXP/S1: Sigmoid mapping (same as above, for bidirectional target)
+          float sigmoid_arg_t = 15.0f * (uncer_target - 0.5f);
+          float w_uncer_target = 1.0f / (1.0f + expf(sigmoid_arg_t)) + 0.1f;
+          w_uncer_target = fminf(fmaxf(w_uncer_target, 0.0f), 1.0f);
           wu = wu * w_uncer_target;
           wv = wv * w_uncer_target;
         }
