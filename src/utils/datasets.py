@@ -455,13 +455,10 @@ class RGB_NoPose(BaseDataset):
                  ):
         super(RGB_NoPose, self).__init__(cfg, device)
         # list all png or jpg files in the input_folder
-        if cfg['dataset'] == 'droidw':
-            self.color_paths = sorted(glob.glob(f'{self.input_folder}/images_anonymized/*.jpg'))
-        else:
-            self.color_paths = sorted(
-            glob.glob(f'{self.input_folder}/rgb/frame*.png'))
-            # YouTube dataset is in jpg format
-            self.color_paths += sorted(glob.glob(f'{self.input_folder}/frame*.jpg'))
+        self.color_paths = sorted(
+        glob.glob(f'{self.input_folder}/rgb/frame*.png'))
+        # YouTube dataset is in jpg format
+        self.color_paths += sorted(glob.glob(f'{self.input_folder}/frame*.jpg'))
         self.depth_paths = None
         self.poses = None
 
@@ -471,16 +468,73 @@ class RGB_NoPose(BaseDataset):
             max_frames = len(self.color_paths)
 
         self.color_paths = self.color_paths[:max_frames][::stride]
-        if cfg['dataset'] == 'droidw':
-            # save timestamp of rgb image to a txt file
-            output_folder = cfg["data"]["output"] + "/" + cfg["scene"]
-            with open(os.path.join(output_folder, 'timestamps.txt'), 'w') as f:
-                for color_path in self.color_paths:
-                    timestamp = float(os.path.basename(color_path)[:-4])
-                    f.write(f"{timestamp}\n")
         self.n_img = len(self.color_paths)
 
         print("INFO: {} images got!".format(self.n_img))
+
+
+class DROIDW(BaseDataset):
+    """DROID-W dataset — 室外动态场景，带 LiDAR/RTK 真值位姿。
+
+    数据目录结构:
+        {scene}/images_anonymized/*.jpg   # RGB 图像（文件名即时间戳）
+        {scene}/traj_gt_fastlivo.txt      # GT 位姿（TUM 格式）
+    """
+
+    def __init__(self, cfg, device='cuda:0'):
+        super(DROIDW, self).__init__(cfg, device)
+        self.color_paths = sorted(glob.glob(f'{self.input_folder}/images_anonymized/*.jpg'))
+        self.depth_paths = None
+
+        stride = cfg['stride']
+        max_frames = cfg['max_frames']
+        if max_frames < 0:
+            max_frames = len(self.color_paths)
+        self.color_paths = self.color_paths[:max_frames][::stride]
+
+        # 保存图像时间戳
+        output_folder = cfg["data"]["output"] + "/" + cfg["scene"]
+        with open(os.path.join(output_folder, 'timestamps.txt'), 'w') as f:
+            for color_path in self.color_paths:
+                timestamp = float(os.path.basename(color_path)[:-4])
+                f.write(f"{timestamp}\n")
+
+        # 加载 GT 位姿（downtown1/2 用 traj_gt_fastlivo.txt，downtown3-7 用 traj_gt.txt）
+        self._load_gt_poses()
+
+        if cfg['save_gt_poses'] and self.poses is not None:
+            self.save_gt_poses(os.path.join(output_folder, 'gt_poses.txt'), self.poses)
+
+        self.n_img = len(self.color_paths)
+        print("INFO: {} images got!".format(self.n_img))
+
+    def _load_gt_poses(self):
+        """加载 GT 位姿（traj_gt_fastlivo.txt，TUM 格式）并与图像时间戳对齐。"""
+        for gt_name in ['traj_gt_fastlivo.txt', 'pose.txt', 'traj_gt.txt']:
+            gt_path = os.path.join(self.input_folder, gt_name)
+            if os.path.exists(gt_path):
+                break
+        else:
+            self.poses = None
+            return
+
+        gt_data = np.loadtxt(gt_path)
+        gt_timestamps = gt_data[:, 0]
+        gt_poses_raw = gt_data[:, 1:8]  # tx ty tz qx qy qz qw
+
+        img_timestamps = np.array([float(os.path.basename(p)[:-4]) for p in self.color_paths])
+
+        from scipy.spatial.transform import Rotation
+        self.poses = []
+        for img_ts in img_timestamps:
+            idx = np.argmin(np.abs(gt_timestamps - img_ts))
+            tx, ty, tz, qx, qy, qz, qw = gt_poses_raw[idx]
+            rot = Rotation.from_quat([qx, qy, qz, qw])
+            c2w = np.eye(4)
+            c2w[:3, :3] = rot.as_matrix()
+            c2w[:3, 3] = [tx, ty, tz]
+            self.poses.append(c2w)
+
 
 class Dycheck(BaseDataset):
     """This is from splat-slam, never test it (todo)"""
@@ -593,5 +647,5 @@ dataset_dict = {
     "bonn_dynamic": TUM_RGBD,
     "youtube": RGB_NoPose,
     "dycheck": Dycheck,
-    "droidw": RGB_NoPose,
+    "droidw": DROIDW,
 }

@@ -160,7 +160,7 @@ def full_traj_eval(traj_est, stream, printer, logger, plot_parent_dir, plot_name
     save_traj(traj_est,f'{plot_parent_dir}/est_poses_full.txt')
 
 
-    if isinstance(stream, RGB_NoPose):
+    if isinstance(stream, RGB_NoPose) or stream.poses is None:
         # We don't have GT pose to evaluate
         return traj_est, None, None
 

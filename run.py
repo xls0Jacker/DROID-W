@@ -3,6 +3,26 @@ import torch
 import argparse
 import os
 
+# Offline mode: monkey-patch torch.hub._parse_repo_info to skip GitHub API calls
+# and resolve branch name directly from local cache
+torch.hub.set_dir('/workspace/torch_cache/hub')
+_original_parse_repo_info = torch.hub._parse_repo_info
+
+
+def _patched_parse_repo_info(github):
+    repo_owner, repo_name = github.split('/')
+    hub_dir = torch.hub.get_dir()
+    for possible_ref in ("main", "master"):
+        if os.path.exists(f"{hub_dir}/{repo_owner}_{repo_name}_{possible_ref}"):
+            return repo_owner, repo_name, possible_ref
+    raise RuntimeError(
+        f"Offline: repo {github} not found in cache ({hub_dir}). "
+        "Download it first with network access."
+    )
+
+
+torch.hub._parse_repo_info = _patched_parse_repo_info
+
 from src import config
 from src.slam import SLAM
 from src.utils.datasets import get_dataset
