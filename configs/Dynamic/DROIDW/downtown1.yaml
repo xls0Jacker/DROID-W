@@ -2,4 +2,4 @@ inherit_from: ./configs/Dynamic/DROIDW/droidw.yaml
 scene: downtown1
 
 data:
-  input_folder: ROOT_FOLDER_PLACEHOLDER/downtown1
+  input_folder: /workspace/DROID-W/datasets/DROID-W/downtown1
